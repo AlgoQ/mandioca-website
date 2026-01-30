@@ -123,8 +123,8 @@ export function PhotoGallery() {
   const visibleImages = galleryImages.slice(0, INITIAL_VISIBLE)
 
   return (
-    <section id="gallery" className="py-20 bg-gray-50">
-      <div className="container mx-auto px-4">
+    <section id="gallery" className="py-12 sm:py-20 bg-gray-50 overflow-hidden">
+      <div className="container mx-auto px-4 max-w-full">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-[#F7B03D] font-semibold text-sm uppercase tracking-wider">

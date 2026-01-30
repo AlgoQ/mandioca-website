@@ -81,44 +81,44 @@ export function Header() {
   ]
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm overflow-hidden">
       {/* Top bar */}
-      <div className="bg-[#0A4843] text-white py-2">
-        <div className="container mx-auto px-4 flex items-center justify-between text-sm">
-          <div className="flex items-center gap-4">
-            <a href="https://wa.me/5493704951772" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-[#F7B03D] transition-colors">
-              <WhatsAppIcon className="h-5 w-5" />
+      <div className="bg-[#0A4843] text-white py-1.5 sm:py-2">
+        <div className="container mx-auto px-3 sm:px-4 flex items-center justify-between text-xs sm:text-sm max-w-full">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a href="https://wa.me/5493704951772" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 sm:gap-1.5 hover:text-[#F7B03D] transition-colors">
+              <WhatsAppIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="hidden sm:inline">+54 9 3704 95-1772</span>
             </a>
-            <a href="mailto:info@mandiocahostel.com" className="flex items-center gap-1.5 hover:text-[#F7B03D] transition-colors">
-              <Mail className="h-5 w-5" />
+            <a href="mailto:info@mandiocahostel.com" className="flex items-center gap-1 sm:gap-1.5 hover:text-[#F7B03D] transition-colors">
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="hidden sm:inline">info@mandiocahostel.com</span>
             </a>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {/* Language Switcher with Flags - shows flag of language to switch TO */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-2 hover:text-[#F7B03D] transition-colors px-2 py-1 rounded border border-white/20 hover:border-[#F7B03D] cursor-pointer"
+              className="flex items-center gap-1 sm:gap-2 hover:text-[#F7B03D] transition-colors px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-white/20 hover:border-[#F7B03D] cursor-pointer"
               title={locale === 'en' ? 'Cambiar a Español' : 'Switch to English'}
             >
               {locale === 'en' ? (
                 <>
-                  <SpainFlagIcon className="h-5 w-7 rounded-sm" />
-                  <span className="text-sm font-medium">ES</span>
+                  <SpainFlagIcon className="h-4 w-5 sm:h-5 sm:w-7 rounded-sm" />
+                  <span className="text-xs sm:text-sm font-medium">ES</span>
                 </>
               ) : (
                 <>
-                  <UKFlagIcon className="h-5 w-7 rounded-sm" />
-                  <span className="text-sm font-medium">EN</span>
+                  <UKFlagIcon className="h-4 w-5 sm:h-5 sm:w-7 rounded-sm" />
+                  <span className="text-xs sm:text-sm font-medium">EN</span>
                 </>
               )}
             </button>
-            <div className="w-px h-5 bg-white/30" />
-            <a href="https://wa.me/5493704951772" target="_blank" rel="noopener noreferrer" className="hover:text-[#F7B03D] transition-colors">
+            <div className="w-px h-4 sm:h-5 bg-white/30 hidden sm:block" />
+            <a href="https://wa.me/5493704951772" target="_blank" rel="noopener noreferrer" className="hover:text-[#F7B03D] transition-colors hidden sm:block">
               <WhatsAppIcon className="h-5 w-5" />
             </a>
-            <a href="https://instagram.com/hostelmandioca1090" target="_blank" rel="noopener noreferrer" className="hover:text-[#F7B03D] transition-colors">
+            <a href="https://instagram.com/hostelmandioca1090" target="_blank" rel="noopener noreferrer" className="hover:text-[#F7B03D] transition-colors hidden sm:block">
               <Instagram className="h-5 w-5" />
             </a>
           </div>
@@ -126,16 +126,16 @@ export function Header() {
       </div>
 
       {/* Main navigation */}
-      <nav className="container mx-auto px-4 py-3">
+      <nav className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 max-w-full">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center flex-shrink-0">
             <Image
               src="/full_logo.jpg"
               alt="Mandioca Hostel"
               width={200}
               height={110}
-              className="h-16 w-auto object-contain"
+              className="h-12 sm:h-16 w-auto object-contain"
               priority
             />
           </Link>
@@ -154,9 +154,9 @@ export function Header() {
           </div>
 
           {/* Book Now Button & Mobile Menu */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button
-              className="bg-[#F7B03D] hover:bg-[#e9a235] text-gray-900 font-semibold px-6"
+              className="bg-[#F7B03D] hover:bg-[#e9a235] text-gray-900 font-semibold px-3 sm:px-6 text-sm sm:text-base"
               asChild
             >
               <a href="#booking">{t.nav.bookNow}</a>

@@ -24,17 +24,17 @@ export function Activities() {
   const activities = t.activities.items
 
   return (
-    <section id="activities" className="py-20 bg-[#0A4843]">
-      <div className="container mx-auto px-4">
+    <section id="activities" className="py-12 sm:py-20 bg-[#0A4843] overflow-hidden">
+      <div className="container mx-auto px-4 max-w-full">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-[#F7B03D] font-semibold text-sm uppercase tracking-wider">
+        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16 px-2">
+          <span className="text-[#F7B03D] font-semibold text-xs sm:text-sm uppercase tracking-wider">
             {t.activities.sectionTitle}
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mt-2 mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mt-2 mb-3 sm:mb-4">
             {t.activities.title}
           </h2>
-          <p className="text-white/80 text-lg">
+          <p className="text-white/80 text-base sm:text-lg">
             {t.activities.subtitle}
           </p>
         </div>

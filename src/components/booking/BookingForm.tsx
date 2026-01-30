@@ -102,8 +102,8 @@ export function BookingForm({
 
   if (isSuccess) {
     return (
-      <section id="booking" className="py-20 bg-[#0A4843]">
-        <div className="container mx-auto px-4">
+      <section id="booking" className="py-12 sm:py-20 bg-[#0A4843] overflow-hidden">
+        <div className="container mx-auto px-4 max-w-full">
           <Card className="max-w-2xl mx-auto">
             <CardContent className="p-12 text-center">
               <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6">

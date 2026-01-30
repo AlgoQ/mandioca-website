@@ -19,8 +19,8 @@ export function Rooms() {
   const rooms = t.rooms.items
 
   return (
-    <section id="rooms" className="py-20 bg-white">
-      <div className="container mx-auto px-4">
+    <section id="rooms" className="py-12 sm:py-20 bg-white overflow-hidden">
+      <div className="container mx-auto px-4 max-w-full">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-[#F7B03D] font-semibold text-sm uppercase tracking-wider">
@@ -64,40 +64,40 @@ export function Rooms() {
                 </div>
               </div>
 
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <h3 className="text-xl font-bold text-[#0A4843]">{room.name}</h3>
-                  <div className="text-right">
-                    <span className="text-2xl font-bold text-[#0A4843]">
+              <CardHeader className="pb-2 px-4 sm:px-6">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-lg sm:text-xl font-bold text-[#0A4843] leading-tight">{room.name}</h3>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-xl sm:text-2xl font-bold text-[#0A4843]">
                       ${room.price_per_night}
                     </span>
-                    <span className="text-gray-500 text-sm block">{t.rooms.perNight}</span>
+                    <span className="text-gray-500 text-xs sm:text-sm block">{t.rooms.perNight}</span>
                   </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-4 flex-1">
-                <p className="text-gray-600">{room.description}</p>
+              <CardContent className="space-y-3 sm:space-y-4 flex-1 px-4 sm:px-6">
+                <p className="text-gray-600 text-sm sm:text-base">{room.description}</p>
 
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Bed className="h-4 w-4" />
+                <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-gray-500">
+                    <Bed className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                     <span>{room.bed_count} {room.bed_count === 1 ? t.rooms.bed : t.rooms.beds}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Users className="h-4 w-4" />
-                    <span>{t.rooms.maxGuests} {room.max_guests} {room.max_guests === 1 ? t.rooms.guest : t.rooms.guests}</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-gray-500">
+                    <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span>{t.rooms.maxGuests} {room.max_guests}</span>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {room.features?.map((feature, featureIndex) => (
                     <div
                       key={featureIndex}
-                      className="flex items-center gap-1 text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full"
+                      className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 bg-gray-100 px-2 sm:px-3 py-1 rounded-full"
                     >
-                      <Check className="h-3 w-3 text-[#0A4843]" />
-                      {feature}
+                      <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#0A4843] flex-shrink-0" />
+                      <span className="truncate">{feature}</span>
                     </div>
                   ))}
                 </div>

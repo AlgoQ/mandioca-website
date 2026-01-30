@@ -75,8 +75,8 @@ export function Contact() {
   }
 
   return (
-    <section id="contact" className="pt-12 pb-8 bg-white">
-      <div className="container mx-auto px-4">
+    <section id="contact" className="py-12 sm:pt-12 sm:pb-8 bg-white overflow-hidden">
+      <div className="container mx-auto px-4 max-w-full">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-10">
           <span className="text-[#F7B03D] font-semibold text-sm uppercase tracking-wider">

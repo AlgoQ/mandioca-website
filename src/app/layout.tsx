@@ -50,11 +50,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body
-        className={`${poppins.variable} font-sans antialiased`}
+        className={`${poppins.variable} font-sans antialiased overflow-x-hidden`}
       >
         <I18nProvider>
           <Header />
-          <main>{children}</main>
+          <main className="overflow-x-hidden">{children}</main>
           <Footer />
           <WhatsAppButton />
         </I18nProvider>

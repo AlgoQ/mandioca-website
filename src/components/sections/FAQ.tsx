@@ -14,8 +14,8 @@ export function FAQ() {
   const faqs = t.faq.items
 
   return (
-    <section id="faq" className="pt-16 pb-10 bg-white">
-      <div className="container mx-auto px-4">
+    <section id="faq" className="py-12 sm:pt-16 sm:pb-10 bg-white overflow-hidden">
+      <div className="container mx-auto px-4 max-w-full">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
           <span className="text-[#F7B03D] font-semibold text-sm uppercase tracking-wider">

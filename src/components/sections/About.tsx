@@ -15,8 +15,8 @@ export function About() {
   ]
 
   return (
-    <section id="about" className="py-20 bg-white">
-      <div className="container mx-auto px-4">
+    <section id="about" className="py-12 sm:py-20 bg-white overflow-hidden">
+      <div className="container mx-auto px-4 max-w-full">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Image Grid */}
           <div className="grid grid-cols-2 gap-4">

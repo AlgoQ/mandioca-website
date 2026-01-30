@@ -31,8 +31,8 @@ export function Footer() {
   ]
 
   return (
-    <footer className="bg-[#0A4843] text-white">
-      <div className="container mx-auto px-4 py-16">
+    <footer className="bg-[#0A4843] text-white overflow-hidden">
+      <div className="container mx-auto px-4 py-10 sm:py-16 max-w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
           {/* Brand & Contact */}
           <div className="space-y-6">

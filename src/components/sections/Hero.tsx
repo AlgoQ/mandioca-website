@@ -38,7 +38,7 @@ export function Hero() {
   }, [])
 
   return (
-    <section className="relative h-[90vh] min-h-[500px] sm:min-h-[600px] mt-[88px] sm:mt-[104px]">
+    <section className="relative h-[85vh] sm:h-[90vh] min-h-[450px] sm:min-h-[600px] mt-[76px] sm:mt-[104px] overflow-hidden">
       {/* Image Carousel */}
       <div className="absolute inset-0 overflow-hidden">
         {heroImages.map((image, index) => (

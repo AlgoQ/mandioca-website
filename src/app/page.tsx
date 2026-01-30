@@ -11,7 +11,7 @@ import { Contact } from '@/components/sections/Contact'
 
 export default function Home() {
   return (
-    <>
+    <div className="w-full overflow-x-hidden">
       <Hero />
       <About />
       <PhotoGallery />
@@ -25,6 +25,6 @@ export default function Home() {
       />
       <FAQ />
       <Contact />
-    </>
+    </div>
   )
 }
