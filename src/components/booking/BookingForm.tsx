@@ -21,6 +21,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
+import posthog from 'posthog-js'
 
 const roomTypes = [
   { id: '1', name: '8 Bed Mixed Dorm', price: 12 },
@@ -45,6 +47,9 @@ export function BookingForm({
   const [guestName, setGuestName] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
   const [guestPhone, setGuestPhone] = useState('')
+  const [rulesAccepted, setRulesAccepted] = useState(false)
+  const [gdprConsent, setGdprConsent] = useState(false)
+  const [marketingConsent, setMarketingConsent] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -55,7 +60,7 @@ export function BookingForm({
     : 0
   const totalPrice = selectedRoom ? selectedRoom.price * nights * parseInt(guests) : 0
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, payNow: boolean = true) => {
     e.preventDefault()
     setError('')
     setIsSubmitting(true)
@@ -66,35 +71,93 @@ export function BookingForm({
         throw new Error('Please fill in all required fields')
       }
 
+      if (!rulesAccepted) {
+        throw new Error('Please accept the hostel rules to continue')
+      }
+
+      if (!gdprConsent) {
+        throw new Error('Please accept the data processing terms to continue')
+      }
+
       if (checkOut <= checkIn) {
         throw new Error('Check-out date must be after check-in date')
       }
 
-      // Submit to API
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hostel_id: hostelId,
-          room_id: roomType,
-          guest_name: guestName,
-          guest_email: guestEmail,
-          guest_phone: guestPhone,
-          check_in: format(checkIn, 'yyyy-MM-dd'),
-          check_out: format(checkOut, 'yyyy-MM-dd'),
-          guest_count: parseInt(guests),
-          total_price: totalPrice,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Booking failed')
+      const bookingData = {
+        hostel_id: hostelId,
+        room_id: roomType,
+        guest_name: guestName,
+        guest_email: guestEmail,
+        guest_phone: guestPhone,
+        check_in: format(checkIn, 'yyyy-MM-dd'),
+        check_out: format(checkOut, 'yyyy-MM-dd'),
+        guest_count: parseInt(guests),
+        total_price: totalPrice,
+        // Consent data
+        rules_accepted: rulesAccepted,
+        gdpr_consent: gdprConsent,
+        marketing_consent: marketingConsent,
       }
 
-      setIsSuccess(true)
+      if (payNow) {
+        // Track checkout started event
+        posthog.capture('checkout_started', {
+          room_id: roomType,
+          room_name: selectedRoom?.name,
+          nights: nights,
+          guest_count: parseInt(guests),
+          total_price: totalPrice,
+          check_in: format(checkIn, 'yyyy-MM-dd'),
+          check_out: format(checkOut, 'yyyy-MM-dd'),
+        })
+
+        // Redirect to Stripe Checkout
+        const response = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bookingData),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Failed to create checkout session')
+        }
+
+        const { url } = await response.json()
+        if (url) {
+          window.location.href = url
+        }
+      } else {
+        // Pay later - just send email notification
+        const response = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bookingData),
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Booking failed')
+        }
+
+        // Track booking form submitted event (pay later)
+        posthog.capture('booking_form_submitted', {
+          room_id: roomType,
+          room_name: selectedRoom?.name,
+          nights: nights,
+          guest_count: parseInt(guests),
+          total_price: totalPrice,
+          check_in: format(checkIn, 'yyyy-MM-dd'),
+          check_out: format(checkOut, 'yyyy-MM-dd'),
+          payment_method: 'pay_at_checkin',
+        })
+
+        setIsSuccess(true)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const errorMessage = err instanceof Error ? err.message : 'Something went wrong'
+      setError(errorMessage)
+      posthog.captureException(err)
     } finally {
       setIsSubmitting(false)
     }
@@ -134,6 +197,9 @@ export function BookingForm({
                   setGuestName('')
                   setGuestEmail('')
                   setGuestPhone('')
+                  setRulesAccepted(false)
+                  setGdprConsent(false)
+                  setMarketingConsent(false)
                 }}
               >
                 Make Another Booking
@@ -247,7 +313,17 @@ export function BookingForm({
                 {/* Room Type */}
                 <div className="space-y-2">
                   <Label>Room Type *</Label>
-                  <Select value={roomType} onValueChange={setRoomType}>
+                  <Select value={roomType} onValueChange={(value) => {
+                    setRoomType(value)
+                    const room = roomTypes.find((r) => r.id === value)
+                    if (room) {
+                      posthog.capture('room_selected', {
+                        room_id: value,
+                        room_name: room.name,
+                        room_price: room.price,
+                      })
+                    }
+                  }}>
                     <SelectTrigger className="w-full">
                       <Bed className="mr-2 h-4 w-4" />
                       <SelectValue placeholder="Select room" />
@@ -324,6 +400,61 @@ export function BookingForm({
                 </div>
               )}
 
+              {/* Consent Checkboxes */}
+              <div className="space-y-4 border-t pt-6">
+                <h4 className="font-semibold text-[#0A4843]">Terms & Consent</h4>
+
+                {/* Rules Acceptance - Required */}
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="rules"
+                    checked={rulesAccepted}
+                    onCheckedChange={(checked) => setRulesAccepted(checked === true)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="rules" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                    I have read and accept the{' '}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      className="text-[#0A4843] underline hover:text-[#F7B03D]"
+                    >
+                      hostel rules and policies
+                    </a>
+                    , including quiet hours, visitor policy, and cancellation terms. *
+                  </label>
+                </div>
+
+                {/* GDPR Consent - Required */}
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="gdpr"
+                    checked={gdprConsent}
+                    onCheckedChange={(checked) => setGdprConsent(checked === true)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="gdpr" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                    I consent to Mandioca Hostel processing my personal data for booking and accommodation management purposes.
+                    Your data will be stored securely and not shared with third parties except as required by law. *
+                  </label>
+                </div>
+
+                {/* Marketing Consent - Optional */}
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="marketing"
+                    checked={marketingConsent}
+                    onCheckedChange={(checked) => setMarketingConsent(checked === true)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="marketing" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                    I would like to receive travel tips, special offers, and updates from Mandioca Hostel (optional)
+                  </label>
+                </div>
+
+                <p className="text-xs text-gray-500">* Required fields</p>
+              </div>
+
               {/* Error Message */}
               {error && (
                 <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm">
@@ -337,6 +468,7 @@ export function BookingForm({
                 size="lg"
                 className="w-full bg-[#F7B03D] hover:bg-[#e9a235] text-gray-900 font-semibold"
                 disabled={isSubmitting}
+                onClick={(e) => handleSubmit(e, false)}
               >
                 {isSubmitting ? (
                   <>
@@ -344,19 +476,10 @@ export function BookingForm({
                     Processing...
                   </>
                 ) : (
-                  'Complete Booking'
+                  'Reserve Now, Pay at Check-in'
                 )}
               </Button>
 
-              <div className="text-center text-sm text-gray-500 space-y-1">
-                <p>
-                  By booking, you agree to our{' '}
-                  <a href="/terms" className="text-[#0A4843] underline hover:text-[#F7B03D]">
-                    Terms & Conditions
-                  </a>
-                </p>
-                <p>Payment upon arrival by cash, credit and debit card</p>
-              </div>
             </form>
           </CardContent>
         </Card>
