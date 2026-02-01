@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateCredentials, generateSessionToken } from '@/lib/auth'
-import { getPostHogClient } from '@/lib/posthog-server'
+
+// Safe PostHog wrapper - fails silently if not configured
+async function trackEvent(event: string, properties: Record<string, unknown>) {
+  try {
+    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return
+    const { getPostHogClient } = await import('@/lib/posthog-server')
+    const posthog = getPostHogClient()
+    posthog.capture({
+      distinctId: properties.distinctId as string,
+      event,
+      properties,
+    })
+    await posthog.shutdown()
+  } catch {
+    // PostHog analytics are optional - don't break login if unavailable
+  }
+}
 
 // Rate limiting map (in production, use Redis)
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
@@ -66,18 +82,13 @@ export async function POST(request: NextRequest) {
     if (!isValid) {
       recordAttempt(ip)
 
-      // Track failed login attempt
-      const posthogFailed = getPostHogClient()
-      posthogFailed.capture({
+      // Track failed login attempt (non-blocking)
+      trackEvent('admin_login_failed', {
         distinctId: `admin_${username}`,
-        event: 'admin_login_failed',
-        properties: {
-          username: username,
-          ip_address: ip,
-          failure_reason: 'invalid_credentials',
-        },
+        username,
+        ip_address: ip,
+        failure_reason: 'invalid_credentials',
       })
-      await posthogFailed.shutdown()
 
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -91,26 +102,14 @@ export async function POST(request: NextRequest) {
     // Create session token
     const token = generateSessionToken()
 
-    // Track successful login
-    const posthog = getPostHogClient()
-    posthog.capture({
+    // Track successful login (non-blocking)
+    trackEvent('admin_login_success', {
       distinctId: `admin_${username}`,
-      event: 'admin_login_success',
-      properties: {
-        username: username,
-        ip_address: ip,
-      },
+      username,
+      ip_address: ip,
+      role: 'admin',
+      last_login: new Date().toISOString(),
     })
-    // Identify the admin user
-    posthog.identify({
-      distinctId: `admin_${username}`,
-      properties: {
-        username: username,
-        role: 'admin',
-        last_login: new Date().toISOString(),
-      },
-    })
-    await posthog.shutdown()
 
     // Create response with cookie
     const response = NextResponse.json({ success: true, message: 'Login successful' })
