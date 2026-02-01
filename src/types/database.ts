@@ -469,3 +469,161 @@ export type NewBooking = Database['public']['Tables']['bookings']['Insert']
 export type NewReview = Database['public']['Tables']['reviews']['Insert']
 export type NewImage = Database['public']['Tables']['hostel_images']['Insert']
 export type NewVideo = Database['public']['Tables']['hostel_videos']['Insert']
+
+// ============================================
+// GUEST CHECK-IN SYSTEM TYPES
+// ============================================
+
+export interface Guest {
+  id: string
+  full_name: string
+  email: string
+  phone: string | null
+  nationality: string | null
+  date_of_birth: string | null
+  passport_number: string | null
+  passport_expiry: string | null
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+  emergency_contact_relation: string | null
+  passport_image_url: string | null
+  signature_image_url: string | null
+  dietary_restrictions: string | null
+  special_requests: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface GuestInsert {
+  full_name: string
+  email: string
+  phone?: string | null
+  nationality?: string | null
+  date_of_birth?: string | null
+  passport_number?: string | null
+  passport_expiry?: string | null
+  emergency_contact_name?: string | null
+  emergency_contact_phone?: string | null
+  emergency_contact_relation?: string | null
+  passport_image_url?: string | null
+  signature_image_url?: string | null
+  dietary_restrictions?: string | null
+  special_requests?: string | null
+}
+
+export interface CheckIn {
+  id: string
+  booking_id: string
+  guest_id: string
+  checked_in_at: string
+  checked_in_by: string | null
+  device_info: string | null
+  ip_address: string | null
+  signature_url: string | null
+  passport_url: string | null
+  rules_accepted: boolean
+  rules_accepted_at: string | null
+  gdpr_consent: boolean
+  gdpr_consent_at: string | null
+  arrival_notes: string | null
+  created_at: string
+}
+
+export interface ConsentLog {
+  id: string
+  guest_id: string | null
+  booking_id: string | null
+  email: string
+  consent_type: 'gdpr' | 'marketing' | 'rules' | 'cookies'
+  consent_given: boolean
+  consent_text: string | null
+  consented_at: string
+  ip_address: string | null
+  user_agent: string | null
+  withdrawn_at: string | null
+  withdrawal_reason: string | null
+}
+
+export interface CleaningTask {
+  id: string
+  hostel_id: string
+  room_id: string | null
+  area_type: 'room' | 'bathroom' | 'kitchen' | 'pool' | 'terrace' | 'common'
+  area_name: string
+  task_type: 'daily' | 'checkout' | 'deep_clean' | 'maintenance'
+  checklist: ChecklistItem[]
+  assigned_to: string | null
+  assigned_at: string | null
+  status: 'pending' | 'in_progress' | 'completed' | 'verified'
+  started_at: string | null
+  completed_at: string | null
+  verified_by: string | null
+  verified_at: string | null
+  scheduled_date: string
+  due_time: string | null
+  notes: string | null
+  photos: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ChecklistItem {
+  id: string
+  task: string
+  task_es?: string
+  required: boolean
+  completed?: boolean
+  completed_at?: string
+}
+
+export interface CleaningTemplate {
+  id: string
+  hostel_id: string
+  name: string
+  name_es: string | null
+  area_type: string
+  task_type: string
+  checklist: ChecklistItem[]
+  active: boolean
+  created_at: string
+}
+
+export interface EmailReminder {
+  id: string
+  booking_id: string
+  reminder_type: 'checkin_1day' | 'checkout_morning' | 'review_request'
+  scheduled_for: string
+  sent_at: string | null
+  status: 'pending' | 'sent' | 'failed' | 'cancelled'
+  error_message: string | null
+  created_at: string
+}
+
+export interface HostelRule {
+  id: string
+  hostel_id: string
+  category: string
+  title: string
+  title_es: string | null
+  description: string
+  description_es: string | null
+  icon: string | null
+  display_order: number
+  required_acceptance: boolean
+  active: boolean
+  created_at: string
+}
+
+// Extended Booking type with new fields
+export interface BookingWithCheckin extends Booking {
+  guest_id: string | null
+  rules_accepted: boolean
+  rules_accepted_at: string | null
+  gdpr_consent: boolean
+  gdpr_consent_at: string | null
+  marketing_consent: boolean
+  checkin_token: string | null
+  checkin_completed_at: string | null
+  arrival_time: string | null
+  checkout_completed_at: string | null
+}

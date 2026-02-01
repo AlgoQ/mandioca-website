@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { createServerSupabaseClient } from '@/lib/supabase'
+import type { Database } from '@/types/database'
 
-// TODO: Uncomment when ready to use Supabase
-// import { createServerSupabaseClient } from '@/lib/supabase'
+type BookingInsert = Database['public']['Tables']['bookings']['Insert']
 
 // Initialize Resend lazily to avoid build-time errors
 function getResendClient() {
@@ -19,6 +20,13 @@ const roomTypes: Record<string, string> = {
   '2': '12 Bed Mixed Dorm ($10/night)',
   '3': 'Private Room - King Bed ($30/night)',
   '4': 'Private Twin Room ($35/night)',
+}
+
+// Get base URL for check-in links
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000'
 }
 
 export async function POST(request: NextRequest) {
@@ -74,30 +82,70 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const bookingData = {
-      hostel_id: body.hostel_id,
-      room_id: body.room_id,
-      guest_name: body.guest_name,
-      guest_email: body.guest_email,
-      guest_phone: body.guest_phone || 'Not provided',
-      check_in: body.check_in,
-      check_out: body.check_out,
-      guest_count: body.guest_count || 1,
-      total_price: body.total_price || 0,
-    }
+    const now = new Date().toISOString()
 
     // Calculate nights
     const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
 
+    // STEP 1: Save booking to database FIRST (to get checkin_token)
+    const supabase = createServerSupabaseClient()
+    let savedBooking = null
+    let checkinToken = null
+
+    if (supabase) {
+      const dbBookingData: BookingInsert & {
+        rules_accepted?: boolean
+        rules_accepted_at?: string | null
+        gdpr_consent?: boolean
+        gdpr_consent_at?: string | null
+        marketing_consent?: boolean
+      } = {
+        hostel_id: body.hostel_id,
+        room_id: body.room_id,
+        guest_name: body.guest_name,
+        guest_email: body.guest_email,
+        guest_phone: body.guest_phone || null,
+        check_in: body.check_in,
+        check_out: body.check_out,
+        guest_count: body.guest_count || 1,
+        total_price: body.total_price || 0,
+        status: 'pending',
+        payment_status: 'pending',
+        // Consent fields
+        rules_accepted: body.rules_accepted || false,
+        rules_accepted_at: body.rules_accepted ? now : null,
+        gdpr_consent: body.gdpr_consent || false,
+        gdpr_consent_at: body.gdpr_consent ? now : null,
+        marketing_consent: body.marketing_consent || false,
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('bookings')
+        .insert(dbBookingData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Supabase error:', error)
+        // Continue - we'll send email without check-in link
+      } else {
+        savedBooking = data
+        checkinToken = data.checkin_token
+      }
+    }
+
     // Get Resend client
     const resend = getResendClient()
+    const baseUrl = getBaseUrl()
+    const checkinUrl = checkinToken ? `${baseUrl}/checkin/${checkinToken}` : null
 
-    // Send email notification to hostel
+    // STEP 2: Send email notification to hostel
     const { error: emailError } = await resend.emails.send({
       from: 'Mandioca Hostel <bookings@mandiocahostel.com>',
       to: ['info@mandiocahostel.com'],
-      replyTo: bookingData.guest_email,
-      subject: `🛏️ New Booking Request - ${bookingData.guest_name}`,
+      replyTo: body.guest_email,
+      subject: `🛏️ New Booking Request - ${body.guest_name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background-color: #0A4843; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
@@ -110,15 +158,15 @@ export async function POST(request: NextRequest) {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Name:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${bookingData.guest_name}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${body.guest_name}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Email:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><a href="mailto:${bookingData.guest_email}">${bookingData.guest_email}</a></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><a href="mailto:${body.guest_email}">${body.guest_email}</a></td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Phone:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><a href="tel:${bookingData.guest_phone}">${bookingData.guest_phone}</a></td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><a href="tel:${body.guest_phone}">${body.guest_phone}</a></td>
               </tr>
             </table>
 
@@ -126,15 +174,15 @@ export async function POST(request: NextRequest) {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Room:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${roomTypes[bookingData.room_id] || bookingData.room_id}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${roomTypes[body.room_id] || body.room_id}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Check-in:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${bookingData.check_in}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${body.check_in}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Check-out:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${bookingData.check_out}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${body.check_out}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Nights:</strong></td>
@@ -142,13 +190,17 @@ export async function POST(request: NextRequest) {
               </tr>
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;"><strong>Guests:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${bookingData.guest_count}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #e5e5e5;">${body.guest_count || 1}</td>
               </tr>
               <tr style="background-color: #F7B03D20;">
                 <td style="padding: 12px 8px;"><strong style="font-size: 18px;">Total:</strong></td>
-                <td style="padding: 12px 8px;"><strong style="font-size: 18px; color: #0A4843;">$${bookingData.total_price}</strong></td>
+                <td style="padding: 12px 8px;"><strong style="font-size: 18px; color: #0A4843;">$${body.total_price || 0}</strong></td>
               </tr>
             </table>
+
+            ${body.rules_accepted ? '<p style="color: green; margin-top: 16px;">✓ Guest accepted hostel rules</p>' : ''}
+            ${body.gdpr_consent ? '<p style="color: green;">✓ Guest accepted GDPR consent</p>' : ''}
+            ${body.marketing_consent ? '<p style="color: green;">✓ Guest opted in for marketing</p>' : ''}
           </div>
 
           <div style="background-color: #0A4843; color: white; padding: 15px; border-radius: 0 0 8px 8px; text-align: center;">
@@ -166,15 +218,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Send confirmation email to guest
+    // STEP 3: Send confirmation email to guest WITH CHECK-IN LINK
     await resend.emails.send({
       from: 'Mandioca Hostel <bookings@mandiocahostel.com>',
-      to: [bookingData.guest_email],
+      to: [body.guest_email],
       subject: `✅ Booking Request Received - Mandioca Hostel`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background-color: #0A4843; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
-            <h1 style="margin: 0; font-size: 24px;">Thank you, ${bookingData.guest_name}!</h1>
+            <h1 style="margin: 0; font-size: 24px;">Thank you, ${body.guest_name}!</h1>
             <p style="margin: 10px 0 0; opacity: 0.9;">We've received your booking request</p>
           </div>
 
@@ -185,16 +237,28 @@ export async function POST(request: NextRequest) {
 
             <h2 style="color: #0A4843;">Your Booking Summary</h2>
             <div style="background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e5e5;">
-              <p style="margin: 8px 0;"><strong>Room:</strong> ${roomTypes[bookingData.room_id] || bookingData.room_id}</p>
-              <p style="margin: 8px 0;"><strong>Check-in:</strong> ${bookingData.check_in} (from 1:00 PM)</p>
-              <p style="margin: 8px 0;"><strong>Check-out:</strong> ${bookingData.check_out} (by 12:00 PM)</p>
-              <p style="margin: 8px 0;"><strong>Guests:</strong> ${bookingData.guest_count}</p>
-              <p style="margin: 8px 0;"><strong>Total:</strong> <span style="color: #0A4843; font-weight: bold;">$${bookingData.total_price}</span></p>
+              <p style="margin: 8px 0;"><strong>Room:</strong> ${roomTypes[body.room_id] || body.room_id}</p>
+              <p style="margin: 8px 0;"><strong>Check-in:</strong> ${body.check_in} (from 1:00 PM)</p>
+              <p style="margin: 8px 0;"><strong>Check-out:</strong> ${body.check_out} (by 12:00 PM)</p>
+              <p style="margin: 8px 0;"><strong>Guests:</strong> ${body.guest_count || 1}</p>
+              <p style="margin: 8px 0;"><strong>Total:</strong> <span style="color: #0A4843; font-weight: bold;">$${body.total_price || 0}</span></p>
             </div>
+
+            ${checkinUrl ? `
+            <div style="background-color: #F7B03D; padding: 20px; border-radius: 8px; margin-top: 20px; text-align: center;">
+              <h3 style="color: #0A4843; margin-top: 0;">📋 Complete Your Check-in Online</h3>
+              <p style="color: #333; margin-bottom: 15px;">Save time on arrival! Complete your registration before you arrive.</p>
+              <a href="${checkinUrl}" style="display: inline-block; background-color: #0A4843; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                Complete Online Check-in →
+              </a>
+              <p style="font-size: 12px; color: #666; margin-top: 10px;">This link is unique to your booking</p>
+            </div>
+            ` : ''}
 
             <h2 style="color: #0A4843; margin-top: 24px;">What's Next?</h2>
             <ol style="color: #333; line-height: 1.8;">
               <li>We'll review your request and send a confirmation within 24 hours</li>
+              ${checkinUrl ? '<li><strong>Complete your online check-in</strong> using the button above</li>' : ''}
               <li>Payment is due upon arrival (cash, credit, or debit card)</li>
               <li>If you have any questions, just reply to this email!</li>
             </ol>
@@ -218,53 +282,63 @@ export async function POST(request: NextRequest) {
       `,
     })
 
-    /* ============================================
-     * TODO: SUPABASE DATABASE INTEGRATION
-     * Uncomment the code below when ready to save bookings to database
-     * ============================================
+    // STEP 4: Log consent for GDPR audit trail
+    if (supabase && savedBooking && (body.rules_accepted || body.gdpr_consent || body.marketing_consent)) {
+      const consentLogs = []
+      const userAgent = request.headers.get('user-agent') || 'Unknown'
+      const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
 
-    const supabase = createServerSupabaseClient()
+      if (body.rules_accepted) {
+        consentLogs.push({
+          booking_id: savedBooking.id,
+          email: body.guest_email,
+          consent_type: 'rules',
+          consent_given: true,
+          consent_text: 'I have read and accept the hostel rules and policies, including quiet hours, visitor policy, and cancellation terms.',
+          ip_address: ip,
+          user_agent: userAgent,
+        })
+      }
 
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database not configured. Please set up Supabase credentials.' },
-        { status: 503 }
-      )
+      if (body.gdpr_consent) {
+        consentLogs.push({
+          booking_id: savedBooking.id,
+          email: body.guest_email,
+          consent_type: 'gdpr',
+          consent_given: true,
+          consent_text: 'I consent to Mandioca Hostel processing my personal data for booking and accommodation management purposes.',
+          ip_address: ip,
+          user_agent: userAgent,
+        })
+      }
+
+      if (body.marketing_consent) {
+        consentLogs.push({
+          booking_id: savedBooking.id,
+          email: body.guest_email,
+          consent_type: 'marketing',
+          consent_given: true,
+          consent_text: 'I would like to receive travel tips, special offers, and updates from Mandioca Hostel.',
+          ip_address: ip,
+          user_agent: userAgent,
+        })
+      }
+
+      // Insert consent logs (ignore errors - booking is primary)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from('consent_logs').insert(consentLogs)
     }
-
-    const dbBookingData = {
-      hostel_id: body.hostel_id,
-      room_id: body.room_id,
-      guest_name: body.guest_name,
-      guest_email: body.guest_email,
-      guest_phone: body.guest_phone || null,
-      check_in: body.check_in,
-      check_out: body.check_out,
-      guest_count: body.guest_count || 1,
-      total_price: body.total_price || 0,
-      status: 'pending',
-    }
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .insert(dbBookingData)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Supabase error:', error)
-      return NextResponse.json(
-        { error: 'Failed to create booking. Please try again.' },
-        { status: 500 }
-      )
-    }
-
-    * ============================================ */
 
     return NextResponse.json(
       {
         message: 'Booking request received successfully',
-        booking: bookingData,
+        booking: savedBooking || {
+          guest_name: body.guest_name,
+          guest_email: body.guest_email,
+          check_in: body.check_in,
+          check_out: body.check_out,
+          total_price: body.total_price,
+        },
       },
       { status: 201 }
     )
@@ -276,11 +350,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-/* ============================================
- * TODO: SUPABASE GET ENDPOINT
- * Uncomment when ready to fetch bookings from database
- * ============================================
 
 export async function GET(request: NextRequest) {
   try {
@@ -326,5 +395,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-
-* ============================================ */
