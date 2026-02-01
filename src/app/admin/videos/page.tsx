@@ -57,6 +57,8 @@ export default function VideosPage() {
   const [editingVideo, setEditingVideo] = useState<HostelVideo | null>(null)
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [videoLoading, setVideoLoading] = useState(false)
 
   // Check authentication
   useEffect(() => {
@@ -71,6 +73,69 @@ export default function VideosPage() {
       })
       .catch(() => router.push('/admin/login'))
   }, [router])
+
+  // Load videos from assets/videos directory
+  useEffect(() => {
+    if (!authenticated) return
+
+    const loadVideos = async () => {
+      setLoading(true)
+      try {
+        // Get list of video files from assets/videos
+        const videoFiles = ['videoplayback.mp4'] // TODO: Fetch from API endpoint
+
+        const loadedVideos: HostelVideo[] = []
+
+        for (let i = 0; i < videoFiles.length; i++) {
+          const fileName = videoFiles[i]
+          const videoPath = `/assets/videos/${fileName}`
+
+          // Create video element to get metadata
+          const video = document.createElement('video')
+          video.src = videoPath
+
+          await new Promise<void>((resolve) => {
+            video.onloadedmetadata = () => {
+              // Create thumbnail from first frame
+              const canvas = document.createElement('canvas')
+              canvas.width = 320
+              canvas.height = 180
+              const ctx = canvas.getContext('2d')
+
+              video.currentTime = 1
+              video.onseeked = () => {
+                ctx?.drawImage(video, 0, 0, canvas.width, canvas.height)
+                const thumbnail = canvas.toDataURL('image/jpeg')
+
+                loadedVideos.push({
+                  id: `video-${i}`,
+                  src: videoPath,
+                  thumbnail,
+                  title: fileName.replace(/\.[^/.]+$/, ''),
+                  titleEs: '',
+                  description: '',
+                  descriptionEs: '',
+                  duration: Math.round(video.duration),
+                  fileSize: 0, // File size not available from client
+                  displayOrder: i + 1,
+                })
+                resolve()
+              }
+            }
+            video.onerror = () => resolve() // Skip if video fails to load
+          })
+        }
+
+        setVideos(loadedVideos)
+      } catch (error) {
+        console.error('Error loading videos:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadVideos()
+  }, [authenticated])
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -255,8 +320,16 @@ export default function VideosPage() {
             </div>
           )}
 
-          {/* Videos Grid */}
-          {videos.length > 0 ? (
+          {/* Loading State */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="relative w-12 h-12">
+                <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-[#0A4843] rounded-full border-t-transparent animate-spin"></div>
+              </div>
+              <p className="mt-4 text-sm text-gray-500">{t.admin.videos.loadingVideos || 'Loading videos...'}</p>
+            </div>
+          ) : videos.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {videos.map((video) => (
                 <div
@@ -358,17 +431,43 @@ export default function VideosPage() {
                 className="relative max-w-4xl w-full"
                 onClick={(e) => e.stopPropagation()}
               >
+                {/* Close button - more prominent */}
                 <button
                   onClick={() => setPlayingVideo(null)}
-                  className="absolute -top-12 right-0 p-2 text-white hover:text-gray-300"
+                  className="absolute -top-12 right-0 p-2 text-white hover:text-gray-300 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+                  aria-label="Close video"
                 >
                   <X className="w-6 h-6" />
                 </button>
+
+                {/* Additional close button on top-right corner of video */}
+                <button
+                  onClick={() => setPlayingVideo(null)}
+                  className="absolute top-4 right-4 z-20 p-2 bg-black/70 hover:bg-black/90 text-white rounded-full transition-colors"
+                  aria-label="Close video"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                {/* Loading spinner overlay */}
+                {videoLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg z-10">
+                    <div className="relative w-16 h-16">
+                      <div className="absolute inset-0 border-4 border-white/20 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+                    </div>
+                  </div>
+                )}
+
                 <video
                   src={playingVideo.src}
                   controls
                   autoPlay
                   className="w-full rounded-lg"
+                  onLoadStart={() => setVideoLoading(true)}
+                  onCanPlay={() => setVideoLoading(false)}
+                  onWaiting={() => setVideoLoading(true)}
+                  onPlaying={() => setVideoLoading(false)}
                 >
                   Your browser does not support the video tag.
                 </video>
