@@ -164,7 +164,7 @@ export async function getVolunteers(): Promise<StaffUser[]> {
 // ============================================
 
 // Keep backward compatibility with the current cookie-based auth
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'acoidnam'
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || ''
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ''
 const SESSION_NAME = 'admin_session'
 const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24 hours

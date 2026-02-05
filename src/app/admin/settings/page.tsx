@@ -221,7 +221,7 @@ export default function SettingsPage() {
                 <div>
                   <Label>{t.admin.settings.security.currentAdmin}</Label>
                   <Input
-                    value="acoidnam"
+                    value="(set via ADMIN_USERNAME env var)"
                     disabled
                     className="mt-1 bg-gray-50"
                   />
