@@ -55,6 +55,19 @@ function clearAttempts(ip: string): void {
   loginAttempts.delete(ip)
 }
 
+// Temporary debug endpoint - remove after fixing
+export async function GET() {
+  const adminUsername = process.env.ADMIN_USERNAME
+  const adminPassword = process.env.ADMIN_PASSWORD
+  return NextResponse.json({
+    debug: true,
+    hasUsername: !!adminUsername,
+    usernameValue: adminUsername || '(not set)',
+    hasPassword: !!adminPassword,
+    passwordLength: adminPassword?.length || 0,
+  })
+}
+
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request)
 
