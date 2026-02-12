@@ -208,6 +208,8 @@ export default function CleaningPage() {
           template_id: '',
           assigned_to: '',
           scheduled_date: format(new Date(), 'yyyy-MM-dd'),
+          recurrence: 'none',
+          recurrence_days: [],
         })
         fetchData()
       }
